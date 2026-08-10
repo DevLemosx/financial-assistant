@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui;
+
+  --color-paper: #F6F7F3;
+  --color-ink: #1B211C;
+  --color-ink-soft: #4B554D;
+  --color-pine: #2F5233;
+  --color-pine-dark: #1F3A23;
+  --color-gold: #A98B32;
+  --color-rust: #A13F2B;
+  --color-line: #DCDFD6;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.font-ledger {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Borda pontilhada estilo recibo, usada para separar linhas de transação */
+.receipt-divider {
+  background-image: repeating-linear-gradient(to right, var(--color-line) 0 6px, transparent 6px 12px);
+  background-size: 12px 1px;
+  background-repeat: repeat-x;
+  background-position: bottom;
+  height: 1px;
+}
