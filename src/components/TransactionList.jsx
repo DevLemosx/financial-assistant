@@ -9,7 +9,7 @@ function formatData(dateStr) {
   return `${dia}/${mes}`
 }
 
-export default function TransactionList({ transactions, categoriesById, onChanged }) {
+export default function TransactionList({ transactions, categoriesById, onChanged, onEdit }) {
   async function handleDelete(id) {
     await supabase.from('transactions').delete().eq('id', id)
     onChanged()
@@ -18,7 +18,7 @@ export default function TransactionList({ transactions, categoriesById, onChange
   if (transactions.length === 0) {
     return (
       <div className="bg-white border border-line rounded-lg p-8 text-center">
-        <p className="text-sm text-ink-soft">Nenhuma transação ainda. Registre a primeira ao lado.</p>
+        <p className="text-sm text-ink-soft">Nenhuma transação no período selecionado.</p>
       </div>
     )
   }
@@ -50,6 +50,13 @@ export default function TransactionList({ transactions, categoriesById, onChange
                   >
                     {t.tipo === 'entrada' ? '+' : '−'} {formatBRL(t.valor)}
                   </span>
+                  <button
+                    onClick={() => onEdit(t)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-ink-soft hover:text-pine text-xs"
+                    aria-label="Editar transação"
+                  >
+                    editar
+                  </button>
                   <button
                     onClick={() => handleDelete(t.id)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-ink-soft hover:text-rust text-xs"

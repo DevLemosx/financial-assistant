@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { getPeriodRange, isWithinRange } from '../lib/dateRanges'
 import BalanceCard from '../components/BalanceCard'
+import MonthSummaryCard from '../components/MonthSummaryCard'
+import PeriodFilter from '../components/PeriodFilter'
+import CategoryChart from '../components/CategoryChart'
 import TransactionForm from '../components/TransactionForm'
 import TransactionList from '../components/TransactionList'
 import CategoryManager from '../components/CategoryManager'
@@ -11,6 +15,8 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
+  const [period, setPeriod] = useState('mes')
+  const [editingTransaction, setEditingTransaction] = useState(null)
 
   const loadData = useCallback(async () => {
     const [{ data: tx }, { data: cats }] = await Promise.all([
@@ -31,6 +37,7 @@ export default function Dashboard() {
     [categories]
   )
 
+  // Saldo total (todas as transações, independente do filtro de período)
   const { saldo, totalEntradas, totalSaidas } = useMemo(() => {
     const totalEntradas = transactions
       .filter((t) => t.tipo === 'entrada')
@@ -40,6 +47,21 @@ export default function Dashboard() {
       .reduce((sum, t) => sum + Number(t.valor), 0)
     return { saldo: totalEntradas - totalSaidas, totalEntradas, totalSaidas }
   }, [transactions])
+
+  // Transações filtradas pelo período selecionado (afeta gráfico e histórico)
+  const filteredTransactions = useMemo(() => {
+    const range = getPeriodRange(period)
+    return transactions.filter((t) => isWithinRange(t.data, range))
+  }, [transactions, period])
+
+  function handleEdit(transaction) {
+    setEditingTransaction(transaction)
+  }
+
+  function handleSaved() {
+    setEditingTransaction(null)
+    loadData()
+  }
 
   return (
     <div className="min-h-screen bg-paper">
@@ -51,10 +73,7 @@ export default function Dashboard() {
             </p>
             <p className="text-sm text-ink-soft">{user?.email}</p>
           </div>
-          <button
-            onClick={signOut}
-            className="text-sm text-ink-soft hover:text-rust"
-          >
+          <button onClick={signOut} className="text-sm text-ink-soft hover:text-rust">
             Sair
           </button>
         </div>
@@ -67,14 +86,29 @@ export default function Dashboard() {
           <div className="grid md:grid-cols-[minmax(0,1fr)_360px] gap-6">
             <div className="space-y-6">
               <BalanceCard saldo={saldo} totalEntradas={totalEntradas} totalSaidas={totalSaidas} />
+              <MonthSummaryCard transactions={transactions} />
+
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-xs tracking-widest uppercase text-ink-soft">Período</p>
+                <PeriodFilter value={period} onChange={setPeriod} />
+              </div>
+
+              <CategoryChart transactions={filteredTransactions} categoriesById={categoriesById} />
+
               <TransactionList
-                transactions={transactions}
+                transactions={filteredTransactions}
                 categoriesById={categoriesById}
                 onChanged={loadData}
+                onEdit={handleEdit}
               />
             </div>
             <div className="space-y-6">
-              <TransactionForm categories={categories} onCreated={loadData} />
+              <TransactionForm
+                categories={categories}
+                onSaved={handleSaved}
+                editing={editingTransaction}
+                onCancelEdit={() => setEditingTransaction(null)}
+              />
               <CategoryManager categories={categories} onChanged={loadData} />
             </div>
           </div>

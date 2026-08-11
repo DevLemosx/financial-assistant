@@ -1,16 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { todayLocalISO } from '../lib/dateRanges'
 
-export default function TransactionForm({ categories, onCreated }) {
+export default function TransactionForm({ categories, onSaved, editing, onCancelEdit }) {
   const { user } = useAuth()
   const [tipo, setTipo] = useState('saida')
   const [valor, setValor] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [descricao, setDescricao] = useState('')
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10))
+  const [data, setData] = useState(() => todayLocalISO())
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (editing) {
+      setTipo(editing.tipo)
+      setValor(String(editing.valor).replace('.', ','))
+      setCategoryId(editing.category_id || '')
+      setDescricao(editing.descricao || '')
+      setData(editing.data)
+    } else {
+      setTipo('saida')
+      setValor('')
+      setCategoryId('')
+      setDescricao('')
+      setData(todayLocalISO())
+    }
+    setError('')
+  }, [editing])
 
   const categoriasFiltradas = categories.filter((c) => c.tipo === tipo || c.tipo === 'ambos')
 
@@ -25,14 +43,19 @@ export default function TransactionForm({ categories, onCreated }) {
     }
 
     setSubmitting(true)
-    const { error } = await supabase.from('transactions').insert({
-      user_id: user.id,
+
+    const payload = {
       tipo,
       valor: valorNumerico,
       category_id: categoryId || null,
       descricao,
       data,
-    })
+    }
+
+    const { error } = editing
+      ? await supabase.from('transactions').update(payload).eq('id', editing.id)
+      : await supabase.from('transactions').insert({ ...payload, user_id: user.id })
+
     setSubmitting(false)
 
     if (error) {
@@ -40,13 +63,24 @@ export default function TransactionForm({ categories, onCreated }) {
       return
     }
 
-    setValor('')
-    setDescricao('')
-    onCreated()
+    if (!editing) {
+      setValor('')
+      setDescricao('')
+    }
+    onSaved()
   }
 
   return (
     <form onSubmit={handleSubmit} className="bg-white border border-line rounded-lg p-5 space-y-4">
+      {editing && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-gold uppercase tracking-wide">Editando transação</p>
+          <button type="button" onClick={onCancelEdit} className="text-xs text-ink-soft hover:text-ink">
+            cancelar
+          </button>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <button
           type="button"
@@ -120,13 +154,24 @@ export default function TransactionForm({ categories, onCreated }) {
 
       {error && <p className="text-sm text-rust">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full bg-ink hover:bg-black transition-colors text-white text-sm font-medium py-2.5 rounded-md disabled:opacity-60"
-      >
-        {submitting ? 'Registrando…' : 'Registrar'}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex-1 bg-ink hover:bg-black transition-colors text-white text-sm font-medium py-2.5 rounded-md disabled:opacity-60"
+        >
+          {submitting ? 'Salvando…' : editing ? 'Salvar alterações' : 'Registrar'}
+        </button>
+        {editing && (
+          <button
+            type="button"
+            onClick={onCancelEdit}
+            className="px-4 border border-line rounded-md text-sm text-ink-soft hover:text-ink"
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
     </form>
   )
 }
